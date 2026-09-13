@@ -72,7 +72,6 @@ let connectedWalletAddress = "";
 let escrowFunded = false;
 let currentDealId = "DG-200B-NEW";
 let resolveLaunchLock = false;
-let autoSwitchingBradbury = false;
 
 document.querySelector("#loadSample").addEventListener("click", () => {
   loadSample();
@@ -739,7 +738,7 @@ function activateTab(name) {
 }
 
 function getWalletProvider() {
-  return window.ethereum || window.rabbyWallet || null;
+  return window.rabbyWallet || window.ethereum || null;
 }
 
 async function initWallet() {
@@ -855,22 +854,6 @@ async function syncWallet(provider) {
     const address = accounts?.[0];
     const onBradbury = isBradburyChain(chainId);
 
-    if (address && !onBradbury && !autoSwitchingBradbury && !walletManuallyDisconnected) {
-      autoSwitchingBradbury = true;
-      setWalletUi({
-        address: shortAddress(address),
-        network: "Switching",
-        status: "Approve the Bradbury network switch in Rabby.",
-        mode: "pending"
-      });
-      try {
-        await ensureBradbury(provider);
-      } finally {
-        autoSwitchingBradbury = false;
-      }
-      return syncWallet(provider);
-    }
-
     if (walletManuallyDisconnected && address) {
       connectedWalletAddress = "";
       setWalletUi({
@@ -929,8 +912,14 @@ function setWalletUi({ address, network, status, mode }) {
   walletStatus.dataset.mode = mode;
   walletNetwork.dataset.mode = mode;
   connectWallet.dataset.mode = mode;
-  connectWallet.dataset.connected = mode === "connected" || mode === "warning" || mode === "pending" ? "true" : "false";
-  connectWallet.textContent = mode === "warning" ? "Switch Network" : connectWallet.dataset.connected === "true" ? "Disconnect" : "Connect Wallet";
+  connectWallet.dataset.connected = mode === "connected" || mode === "warning" ? "true" : "false";
+  connectWallet.textContent = mode === "warning"
+    ? "Switch Network"
+    : mode === "pending"
+      ? "Connecting"
+      : connectWallet.dataset.connected === "true"
+        ? "Disconnect"
+        : "Connect Wallet";
 }
 
 function walletErrorMessage(error) {
