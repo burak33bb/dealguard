@@ -60,6 +60,7 @@ const chainLastTx = document.querySelector("#chainLastTx");
 const fundEscrowButton = document.querySelector("#fundEscrow");
 const resolveDealButton = document.querySelector("#resolveDeal");
 const connectWallet = document.querySelector("#connectWallet");
+const switchNetworkButton = document.querySelector("#switchNetwork");
 const walletAddress = document.querySelector("#walletAddress");
 const walletNetwork = document.querySelector("#walletNetwork");
 const walletStatus = document.querySelector("#walletStatus");
@@ -88,6 +89,7 @@ document.addEventListener("pointerdown", (event) => {
   }
 }, { capture: true });
 connectWallet.addEventListener("click", connectWalletFlow);
+switchNetworkButton.addEventListener("click", switchNetworkFlow);
 
 for (const tab of document.querySelectorAll(".tab")) {
   tab.addEventListener("click", () => activateTab(tab.dataset.tab));
@@ -770,30 +772,6 @@ async function connectWalletFlow() {
     return;
   }
 
-  if (connectWallet.dataset.mode === "warning") {
-    try {
-      connectWallet.disabled = true;
-      setWalletUi({
-        address: walletAddress.textContent,
-        network: "Switching",
-        status: "Approve the Bradbury network switch in Rabby.",
-        mode: "pending"
-      });
-      await ensureBradbury(provider);
-      await syncWallet(provider);
-    } catch (error) {
-      setWalletUi({
-        address: walletAddress.textContent,
-        network: "Wrong network",
-        status: walletErrorMessage(error),
-        mode: "warning"
-      });
-    } finally {
-      connectWallet.disabled = false;
-    }
-    return;
-  }
-
   if (connectWallet.dataset.connected === "true") {
     await disconnectWalletFlow(provider);
     return;
@@ -820,6 +798,40 @@ async function connectWalletFlow() {
     });
   } finally {
     connectWallet.disabled = false;
+  }
+}
+
+async function switchNetworkFlow() {
+  const provider = getWalletProvider();
+  if (!provider?.request) {
+    setWalletUi({
+      address: "No wallet",
+      network: "Offline",
+      status: "Wallet not detected in this browser.",
+      mode: "missing"
+    });
+    return;
+  }
+
+  try {
+    switchNetworkButton.disabled = true;
+    setWalletUi({
+      address: walletAddress.textContent,
+      network: "Switching",
+      status: "Approve Bradbury network in Rabby.",
+      mode: "switching"
+    });
+    await ensureBradbury(provider);
+    await syncWallet(provider);
+  } catch (error) {
+    setWalletUi({
+      address: walletAddress.textContent,
+      network: "Wrong network",
+      status: walletErrorMessage(error),
+      mode: "warning"
+    });
+  } finally {
+    switchNetworkButton.disabled = false;
   }
 }
 
@@ -860,7 +872,7 @@ async function syncWallet(provider) {
         address: "Not connected",
         network: onBradbury ? "Bradbury" : "Wrong network",
         status: "Disconnected. Reconnect to choose another wallet.",
-        mode: onBradbury ? "ready" : "warning"
+        mode: "ready"
       });
       return;
     }
@@ -897,10 +909,19 @@ async function ensureBradbury(provider) {
       params: [{ chainId: BRADBURY_CHAIN.chainId }]
     });
   } catch (error) {
-    if (error?.code !== 4902) throw error;
+    const message = String(error?.message || "").toLowerCase();
+    const shouldAddChain = error?.code === 4902
+      || message.includes("unrecognized")
+      || message.includes("not added")
+      || message.includes("unknown chain");
+    if (!shouldAddChain) throw error;
     await provider.request({
       method: "wallet_addEthereumChain",
       params: [BRADBURY_CHAIN]
+    });
+    await provider.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: BRADBURY_CHAIN.chainId }]
     });
   }
 }
@@ -913,13 +934,13 @@ function setWalletUi({ address, network, status, mode }) {
   walletNetwork.dataset.mode = mode;
   connectWallet.dataset.mode = mode;
   connectWallet.dataset.connected = mode === "connected" || mode === "warning" ? "true" : "false";
-  connectWallet.textContent = mode === "warning"
-    ? "Switch Network"
-    : mode === "pending"
-      ? "Connecting"
-      : connectWallet.dataset.connected === "true"
-        ? "Disconnect"
-        : "Connect Wallet";
+  connectWallet.textContent = mode === "pending"
+    ? "Connecting"
+    : connectWallet.dataset.connected === "true"
+      ? "Disconnect"
+      : "Connect Wallet";
+  switchNetworkButton.classList.toggle("hidden", mode !== "warning" && mode !== "switching");
+  switchNetworkButton.textContent = mode === "switching" ? "Switching" : "Switch Network";
 }
 
 function walletErrorMessage(error) {

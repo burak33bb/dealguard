@@ -122,7 +122,7 @@ button:disabled {
 
 .wallet-card {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto auto minmax(0, 1fr);
   align-items: center;
   gap: 8px;
   border: 1px solid rgba(255, 188, 102, 0.14);
@@ -131,7 +131,8 @@ button:disabled {
   background: rgba(5, 5, 5, 0.42);
 }
 
-#connectWallet {
+#connectWallet,
+#switchNetwork {
   min-height: 30px;
   border-color: rgba(36, 210, 186, 0.38);
   background: linear-gradient(180deg, #23d8bf, #087568);
@@ -141,7 +142,8 @@ button:disabled {
   white-space: nowrap;
 }
 
-#connectWallet:disabled {
+#connectWallet:disabled,
+#switchNetwork:disabled {
   cursor: wait;
   opacity: 0.72;
 }
@@ -150,6 +152,16 @@ button:disabled {
   border-color: rgba(255, 107, 95, 0.34);
   background: linear-gradient(180deg, #ffbd66, #ff6b5f);
   color: #160806;
+}
+
+#switchNetwork {
+  border-color: rgba(255, 159, 28, 0.44);
+  background: linear-gradient(180deg, #ffbd66, #d07100);
+  color: #160806;
+}
+
+.hidden {
+  display: none !important;
 }
 
 #walletNetwork {
