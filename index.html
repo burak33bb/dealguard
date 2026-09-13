@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DealGuard</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="workspace" aria-label="DealGuard workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Agent escrow risk desk</p>
+            <div class="title-line">
+              <h1>DealGuard</h1>
+              <span class="live-badge">Live on Bradbury</span>
+            </div>
+          </div>
+          <div class="protocol-badge" aria-label="Protocol signal">
+            <div>
+              <span>GenLayer</span>
+              <strong>Consensus backed verdict</strong>
+            </div>
+            <div class="wallet-card" aria-label="Wallet connection">
+              <button id="connectWallet" type="button">Connect Wallet</button>
+              <div>
+                <span id="walletNetwork">Bradbury</span>
+                <strong id="walletAddress">Not connected</strong>
+              </div>
+            </div>
+            <p id="walletStatus">Wallet signs the demo account context.</p>
+          </div>
+        </header>
+
+        <section class="editor-layout">
+          <aside class="left-rail" aria-label="Deal input">
+            <div class="panel-header">
+              <h2>Deal</h2>
+              <button id="loadSample" type="button">Sample</button>
+            </div>
+            <div class="deal-meta" aria-label="Deal parties">
+              <div>
+                <span>Client</span>
+                <strong>BuyerAgent</strong>
+              </div>
+              <div>
+                <span>Worker</span>
+                <strong>ResearchBot</strong>
+              </div>
+              <div>
+                <span>Escrow</span>
+                <strong id="metaEscrow">0 GEN</strong>
+              </div>
+            </div>
+            <div class="editor-block">
+              <div class="editor-head">
+                <label for="brief">Brief</label>
+                <span id="scanState">Ready</span>
+              </div>
+              <textarea id="brief" spellcheck="true" placeholder="Paste the deal terms here."></textarea>
+            </div>
+
+            <div class="field-grid">
+              <label>
+                Escrow (GEN)
+                <input id="amount" type="number" min="0" step="0.01" />
+              </label>
+              <label>
+                Deadline
+                <input id="deadline" type="date" />
+              </label>
+              <label class="wide-field">
+                Worker wallet
+                <input id="workerAddress" type="text" spellcheck="false" placeholder="0x worker address" />
+              </label>
+            </div>
+
+            <div class="editor-block">
+              <div class="editor-head">
+                <label for="evidence">Evidence</label>
+                <span id="evidenceState">Waiting</span>
+              </div>
+              <textarea id="evidence" spellcheck="true" placeholder="Paste delivery proof, validation notes, links, and defect counts here."></textarea>
+            </div>
+
+            <div class="action-row">
+              <button id="runAudit" type="button">Audit</button>
+              <button id="fundEscrow" type="button">Fund Escrow</button>
+              <button id="resolveDeal" type="button" onclick="window.dealGuardResolve?.(event)">Resolve Onchain</button>
+            </div>
+          </aside>
+
+          <section class="center-stage" aria-label="Audit output">
+            <div class="step-rail" aria-label="Deal progress">
+              <div id="stepAudit" class="step active">
+                <span>01</span>
+                <strong>Audit</strong>
+              </div>
+              <div id="stepTerms" class="step">
+                <span>02</span>
+                <strong>Terms</strong>
+              </div>
+              <div id="stepResolve" class="step">
+                <span>03</span>
+                <strong>Resolve</strong>
+              </div>
+            </div>
+            <ol class="lifecycle" aria-label="Deal lifecycle">
+              <li id="lifeDraft" class="active">
+                <span>01</span>
+                <strong>Deal drafted</strong>
+              </li>
+              <li id="lifeAudit">
+                <span>02</span>
+                <strong>Risk audited</strong>
+              </li>
+              <li id="lifeFund">
+                <span>03</span>
+                <strong>Escrow funded</strong>
+              </li>
+              <li id="lifeResolve">
+                <span>04</span>
+                <strong>Verdict written</strong>
+              </li>
+            </ol>
+            <div class="decision-band">
+              <div>
+                <p class="eyebrow">Agreement risk</p>
+                <h2 id="verdictTitle">Waiting for audit</h2>
+              </div>
+              <div class="score-box">
+                <span id="riskScore">--</span>
+                <small>agreement risk</small>
+              </div>
+            </div>
+
+            <canvas id="consensusCanvas" width="1100" height="190" aria-label="Consensus flow visualization"></canvas>
+
+            <div class="tabs" role="tablist" aria-label="Result views">
+              <button class="tab active" data-tab="risks" role="tab" type="button">Issues</button>
+              <button class="tab" data-tab="terms" role="tab" type="button">Terms</button>
+              <button class="tab" data-tab="consensus" role="tab" type="button">Review</button>
+            </div>
+
+            <div id="risks" class="tab-panel active" role="tabpanel"></div>
+            <div id="terms" class="tab-panel" role="tabpanel"></div>
+            <div id="consensus" class="tab-panel" role="tabpanel"></div>
+          </section>
+
+          <aside class="right-rail" aria-label="Deal state">
+            <div class="panel-header">
+              <h2>Escrow</h2>
+              <span id="statePill" class="pill">Draft</span>
+            </div>
+            <div id="successPanel" class="success-panel hidden">
+              <span>Onchain success</span>
+              <strong id="successTitle">Transaction accepted</strong>
+              <a id="successExplorer" href="https://explorer-bradbury.genlayer.com/tx/0xbe4c164c9efd57bef9348918e5e03ec4c9f60da0ba8d676fd32de401" target="_blank" rel="noreferrer">Open explorer</a>
+            </div>
+            <div id="outcomeBanner" class="outcome-banner pending">
+              <span>Outcome</span>
+              <strong>No decision</strong>
+            </div>
+            <div class="escrow-total">
+              <span>Locked</span>
+              <strong id="lockedHero">0 GEN</strong>
+            </div>
+            <div id="fundingAdvice" class="funding-advice neutral">
+              <span>Funding advice</span>
+              <strong id="fundingAdviceTitle">Audit deal first</strong>
+              <p id="fundingAdviceText">Risk decides whether escrow should be funded.</p>
+            </div>
+            <p id="payoutCaption" class="metrics-caption">Payout appears after Resolve Onchain.</p>
+            <dl class="metrics">
+              <div>
+                <dt>Release</dt>
+                <dd id="releaseAmount">0 GEN</dd>
+              </div>
+              <div>
+                <dt>Refund</dt>
+                <dd id="refundAmount">0 GEN</dd>
+              </div>
+              <div>
+                <dt>Confidence</dt>
+                <dd id="confidence">--</dd>
+              </div>
+            </dl>
+            <div class="split-panel" aria-label="Payout split">
+              <div class="split-track">
+                <span id="releaseBar"></span>
+                <span id="refundBar"></span>
+              </div>
+              <div class="split-labels">
+                <span id="workerShare">Worker 0%</span>
+                <span id="clientShare">Client 0%</span>
+              </div>
+            </div>
+            <div id="reasonChips" class="reason-chips" aria-label="Verdict reasons"></div>
+            <p id="escrowNote" class="escrow-note">Audit the deal before funds move.</p>
+            <div class="state-card" aria-label="Current contract state">
+              <div class="state-card-head">
+                <span>Current contract state</span>
+                <strong id="dealId">DG-200B-NEW</strong>
+              </div>
+              <dl>
+                <div>
+                  <dt>Funding</dt>
+                  <dd id="chainFunding">Not funded</dd>
+                </div>
+                <div>
+                  <dt>Resolver</dt>
+                  <dd id="chainResolver">Idle</dd>
+                </div>
+                <div>
+                  <dt>Last tx</dt>
+                  <dd id="chainLastTx">Deploy only</dd>
+                </div>
+              </dl>
+            </div>
+            <div class="contract-proof" aria-label="GenLayer contract proof">
+              <div>
+                <span>Network</span>
+                <strong>Bradbury</strong>
+              </div>
+              <div>
+                <span>Method</span>
+                <strong id="contractMethod">open_escrow</strong>
+              </div>
+              <div>
+                <span>Address</span>
+                <strong id="contractAddress" title="0x200bBf7a3A0ce93E5d6126C7C8dD33f4914D129A">0x200b...129A</strong>
+              </div>
+              <div>
+                <span>Tx</span>
+                <strong id="contractTx" title="0xbe4c164c9efd57bef9348918e5e03ec4c9f60da0ba8d676fd32de401">deploy 0xbe4c...e401</strong>
+              </div>
+              <a id="explorerLink" class="explorer-button" href="https://explorer-bradbury.genlayer.com/tx/0xbe4c164c9efd57bef9348918e5e03ec4c9f60da0ba8d676fd32de401" target="_blank" rel="noreferrer">View deploy tx on explorer</a>
+            </div>
+          </aside>
+        </section>
+      </section>
+    </main>
+    <script type="module" src="./script.js"></script>
+  </body>
+</html>
