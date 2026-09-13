@@ -72,6 +72,7 @@ let connectedWalletAddress = "";
 let escrowFunded = false;
 let currentDealId = "DG-200B-NEW";
 let resolveLaunchLock = false;
+let autoSwitchingBradbury = false;
 
 document.querySelector("#loadSample").addEventListener("click", () => {
   loadSample();
@@ -770,6 +771,30 @@ async function connectWalletFlow() {
     return;
   }
 
+  if (connectWallet.dataset.mode === "warning") {
+    try {
+      connectWallet.disabled = true;
+      setWalletUi({
+        address: walletAddress.textContent,
+        network: "Switching",
+        status: "Approve the Bradbury network switch in Rabby.",
+        mode: "pending"
+      });
+      await ensureBradbury(provider);
+      await syncWallet(provider);
+    } catch (error) {
+      setWalletUi({
+        address: walletAddress.textContent,
+        network: "Wrong network",
+        status: walletErrorMessage(error),
+        mode: "warning"
+      });
+    } finally {
+      connectWallet.disabled = false;
+    }
+    return;
+  }
+
   if (connectWallet.dataset.connected === "true") {
     await disconnectWalletFlow(provider);
     return;
@@ -830,6 +855,22 @@ async function syncWallet(provider) {
     const address = accounts?.[0];
     const onBradbury = isBradburyChain(chainId);
 
+    if (address && !onBradbury && !autoSwitchingBradbury && !walletManuallyDisconnected) {
+      autoSwitchingBradbury = true;
+      setWalletUi({
+        address: shortAddress(address),
+        network: "Switching",
+        status: "Approve the Bradbury network switch in Rabby.",
+        mode: "pending"
+      });
+      try {
+        await ensureBradbury(provider);
+      } finally {
+        autoSwitchingBradbury = false;
+      }
+      return syncWallet(provider);
+    }
+
     if (walletManuallyDisconnected && address) {
       connectedWalletAddress = "";
       setWalletUi({
@@ -887,8 +928,9 @@ function setWalletUi({ address, network, status, mode }) {
   walletStatus.textContent = status;
   walletStatus.dataset.mode = mode;
   walletNetwork.dataset.mode = mode;
-  connectWallet.dataset.connected = mode === "connected" || mode === "warning" ? "true" : "false";
-  connectWallet.textContent = connectWallet.dataset.connected === "true" ? "Disconnect" : "Connect Wallet";
+  connectWallet.dataset.mode = mode;
+  connectWallet.dataset.connected = mode === "connected" || mode === "warning" || mode === "pending" ? "true" : "false";
+  connectWallet.textContent = mode === "warning" ? "Switch Network" : connectWallet.dataset.connected === "true" ? "Disconnect" : "Connect Wallet";
 }
 
 function walletErrorMessage(error) {
